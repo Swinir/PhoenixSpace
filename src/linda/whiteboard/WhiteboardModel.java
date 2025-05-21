@@ -96,6 +96,10 @@ public class WhiteboardModel {
         linda.takeAll(new Tuple(KEY_WHITEBOARD, Command.DRAW, ColoredShape.class));
         // Tell all clients that we did an erase by writing an erase tuple,
         linda.write(new Tuple(KEY_WHITEBOARD, Command.ERASEALL));
+        // Effacer localement
+        lines.clear();
+        view.setClear();
+        view.redraw();
         // and delete this tuple (potential synchronization problem !)
         linda.takeAll(new Tuple(KEY_WHITEBOARD, Command.ERASEALL));
     }	
@@ -149,6 +153,8 @@ public class WhiteboardModel {
 			System.out.println("Erase Request received from server");
                         lines.clear();
                         view.setClear();
+                        view.redraw();
+                        // Réenregistrer l'événement APRÈS avoir traité l'effacement
                         linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, this);
 		}	
     }
