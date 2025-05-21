@@ -30,35 +30,56 @@ public class CentralizedLinda implements Linda {
     public void write(Tuple t) {
         lock.lock();
         try {
-            tupleSpace.add(t);
+            // Clone the tuple before any operations
+            Tuple tupleToWrite = t.deepclone();
 
-            // Vérification des callbacks
-            List<CallbackRegistration> triggeredCallbacks = new ArrayList<>();
-            for (CallbackRegistration registration : callbacks) {
-                if (t.matches(registration.template)) {
-                    triggeredCallbacks.add(registration);
+            // Add the tuple to the space first
+            tupleSpace.add(tupleToWrite.deepclone());
+
+            List<CallbackRegistration> matchingCallbacks = new ArrayList<>();
+            for (CallbackRegistration registration : new ArrayList<>(callbacks)) {
+                if (tupleToWrite.matches(registration.template)) {
+                    matchingCallbacks.add(registration);
                 }
             }
 
-            // Traitement des callbacks déclenchés
-            for (CallbackRegistration registration : triggeredCallbacks) {
-                callbacks.remove(registration);
-                final Tuple callbackTuple = t;
+            for (CallbackRegistration registration : matchingCallbacks) {
+                if (registration.mode == eventMode.READ) {
+                    callbacks.remove(registration);
+                    try {
+                        registration.callback.call(tupleToWrite.deepclone());
+                    } catch (Exception e) {
+                        System.err.println("Error in callback: " + e);
+                    }
+                }
+            }
 
+            CallbackRegistration takeCallback = null;
+            for (CallbackRegistration registration : matchingCallbacks) {
                 if (registration.mode == eventMode.TAKE) {
-                    tupleSpace.remove(t);
+                    takeCallback = registration;
+                    break;
                 }
-
-                // Exécution du callback dans un thread séparé
-                new Thread(() -> registration.callback.call(callbackTuple)).start();
+            }
+            if (takeCallback != null) {
+                callbacks.remove(takeCallback);
+                Tuple matchingTuple = findMatchingTuple(takeCallback.template);
+                if (matchingTuple != null) {
+                    tupleSpace.remove(matchingTuple);
+                    try {
+                        takeCallback.callback.call(matchingTuple.deepclone());
+                    } catch (Exception e) {
+                        System.err.println("Error in callback: " + e);
+                    }
+                }
             }
 
-            // Signal aux threads en attente
             condition.signalAll();
         } finally {
             lock.unlock();
         }
     }
+
 
     @Override
     public Tuple take(Tuple template) {
@@ -93,7 +114,7 @@ public class CentralizedLinda implements Linda {
                     return null;
                 }
             }
-            return result;
+            return result.deepclone();
         } finally {
             lock.unlock();
         }
@@ -117,7 +138,8 @@ public class CentralizedLinda implements Linda {
     public Tuple tryRead(Tuple template) {
         lock.lock();
         try {
-            return findMatchingTuple(template);
+            Tuple result = findMatchingTuple(template);
+            return result != null ? result.deepclone() : null;
         } finally {
             lock.unlock();
         }
@@ -164,20 +186,20 @@ public class CentralizedLinda implements Linda {
             if (timing == eventTiming.IMMEDIATE) {
                 Tuple match = findMatchingTuple(template);
                 if (match != null) {
-                    final Tuple callbackTuple = match;
-
                     if (mode == eventMode.TAKE) {
                         tupleSpace.remove(match);
                     }
-
-                    // Exécution du callback dans un thread séparé
-                    new Thread(() -> callback.call(callbackTuple)).start();
+                    try {
+                        callback.call(match.deepclone());
+                    } catch (Exception e) {
+                        System.err.println("Error in callback: " + e);
+                    }
                     return;
                 }
             }
 
             // Enregistrement du callback pour les futurs tuples
-            callbacks.add(new CallbackRegistration(mode, timing, template, callback));
+            callbacks.add(new CallbackRegistration(mode, timing, template.deepclone(), callback));
         } finally {
             lock.unlock();
         }

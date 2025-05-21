@@ -40,7 +40,7 @@ public class WhiteboardModel {
     enum Command { DRAW, ERASEALL, ROTATE };
 
     /** The lines and their respective colors that this client knows about. */
-    private Set<ColoredShape> lines = new HashSet<>();
+    private Set<ColoredShape> lines = Collections.synchronizedSet(new HashSet<>());
 
     private boolean eraseFlag = false;   // set true when erase command received
 
@@ -56,15 +56,17 @@ public class WhiteboardModel {
     }
 
     public Set<ColoredShape> getLines() {
-        return lines;
+        synchronized (lines) {
+            return new HashSet<>(lines);
+        }
     }
 
     public void start(Linda linda) {
         this.linda = linda;
         // Create a template to indicate what we are interested in.
-        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, new CallbackErase());
-        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, new CallbackShape());
-        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, new CallbackRotate());
+        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, new AsynchronousCallback(new CallbackErase()));
+        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, new AsynchronousCallback(new CallbackShape()));
+        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, new AsynchronousCallback(new CallbackRotate()));
         System.out.println("Scan for current status");
         // During initialization, we need to read all the current lines
         // stored at the lindaSpaces server.
@@ -96,6 +98,10 @@ public class WhiteboardModel {
         linda.takeAll(new Tuple(KEY_WHITEBOARD, Command.DRAW, ColoredShape.class));
         // Tell all clients that we did an erase by writing an erase tuple,
         linda.write(new Tuple(KEY_WHITEBOARD, Command.ERASEALL));
+        // Effacer localement
+        lines.clear();
+        view.setClear();
+        view.redraw();
         // and delete this tuple (potential synchronization problem !)
         linda.takeAll(new Tuple(KEY_WHITEBOARD, Command.ERASEALL));
     }	
@@ -138,18 +144,25 @@ public class WhiteboardModel {
 		public void call(Tuple t) {
 			System.out.println("Draw Request received from server");
                         ColoredShape shape = (ColoredShape)(t.get(2));
-                        lines.add(shape);
+                        synchronized (lines) {
+                            lines.add(shape);
+                        }
                         view.redraw();
-                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, this);
+                        // Réenregistrer l'événement de manière asynchrone
+                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, new AsynchronousCallback(this));
                 }
     }
 
     private class CallbackErase implements linda.Callback {
 		public void call(Tuple t) {
 			System.out.println("Erase Request received from server");
-                        lines.clear();
+                        synchronized (lines) {
+                            lines.clear();
+                        }
                         view.setClear();
-                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, this);
+                        view.redraw();
+                        // Réenregistrer l'événement de manière asynchrone
+                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, new AsynchronousCallback(this));
 		}	
     }
     
@@ -160,13 +173,15 @@ public class WhiteboardModel {
                         // Let's be careful: rotation with center in WIDTH/2, HEIGHT/2
                         AffineTransform at = new AffineTransform();
                         at.rotate(Math.toRadians(angle), view.drawing.getSize().width / 2.0, view.drawing.getSize().height / 2.0);
-                        //at.quadrantRotate(1, view.drawing.getSize().width / 2.0, view.drawing.getSize().height / 2.0);
-                        for (ColoredShape rc : lines) {
-                            rc.shape = at.createTransformedShape(rc.shape);
+                        synchronized (lines) {
+                            for (ColoredShape rc : lines) {
+                                rc.shape = at.createTransformedShape(rc.shape);
+                            }
                         }
                         view.setClear();
                         view.redraw();
-                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, this);
+                        // Réenregistrer l'événement de manière asynchrone
+                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, new AsynchronousCallback(this));
                 }
     }
 

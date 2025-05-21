@@ -77,7 +77,7 @@ public class WhiteboardView implements MouseListener, MouseMotionListener {
             DrawMode savemode = mode;
             mode = DrawMode.OTHER;
             this.paint(g);
-            setDrawMode(savemode);
+            mode = savemode;
         }
     }
 
@@ -95,9 +95,11 @@ public class WhiteboardView implements MouseListener, MouseMotionListener {
         }
         g.setColor(drawing.getForeground());
         g.setPaintMode();
-        for (ColoredShape rc : model.getLines()) {
-            g.setColor(rc.color);
-            ((Graphics2D)g).draw(rc.shape);
+        synchronized (model) {
+            for (ColoredShape rc : model.getLines()) {
+                g.setColor(rc.color);
+                ((Graphics2D)g).draw(rc.shape);
+            }
         }
         if (mode == DrawMode.LINES) {
             g.setXORMode(drawing.getBackground());
@@ -120,10 +122,11 @@ public class WhiteboardView implements MouseListener, MouseMotionListener {
         switch (mode) {
           case LINES:
           case POINTS:
+          case OTHER:
             this.mode = mode;
             break;
           default:
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException("Invalid draw mode: " + mode);
         }
     }
 
