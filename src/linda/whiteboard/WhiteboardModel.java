@@ -40,7 +40,7 @@ public class WhiteboardModel {
     enum Command { DRAW, ERASEALL, ROTATE };
 
     /** The lines and their respective colors that this client knows about. */
-    private Set<ColoredShape> lines = new HashSet<>();
+    private Set<ColoredShape> lines = Collections.synchronizedSet(new HashSet<>());
 
     private boolean eraseFlag = false;   // set true when erase command received
 
@@ -56,7 +56,9 @@ public class WhiteboardModel {
     }
 
     public Set<ColoredShape> getLines() {
-        return lines;
+        synchronized (lines) {
+            return new HashSet<>(lines);
+        }
     }
 
     public void start(Linda linda) {
@@ -142,7 +144,9 @@ public class WhiteboardModel {
 		public void call(Tuple t) {
 			System.out.println("Draw Request received from server");
                         ColoredShape shape = (ColoredShape)(t.get(2));
-                        lines.add(shape);
+                        synchronized (lines) {
+                            lines.add(shape);
+                        }
                         view.redraw();
                         linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, this);
                 }
@@ -151,10 +155,11 @@ public class WhiteboardModel {
     private class CallbackErase implements linda.Callback {
 		public void call(Tuple t) {
 			System.out.println("Erase Request received from server");
-                        lines.clear();
+                        synchronized (lines) {
+                            lines.clear();
+                        }
                         view.setClear();
                         view.redraw();
-                        // Réenregistrer l'événement APRÈS avoir traité l'effacement
                         linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, this);
 		}	
     }
@@ -166,9 +171,10 @@ public class WhiteboardModel {
                         // Let's be careful: rotation with center in WIDTH/2, HEIGHT/2
                         AffineTransform at = new AffineTransform();
                         at.rotate(Math.toRadians(angle), view.drawing.getSize().width / 2.0, view.drawing.getSize().height / 2.0);
-                        //at.quadrantRotate(1, view.drawing.getSize().width / 2.0, view.drawing.getSize().height / 2.0);
-                        for (ColoredShape rc : lines) {
-                            rc.shape = at.createTransformedShape(rc.shape);
+                        synchronized (lines) {
+                            for (ColoredShape rc : lines) {
+                                rc.shape = at.createTransformedShape(rc.shape);
+                            }
                         }
                         view.setClear();
                         view.redraw();
