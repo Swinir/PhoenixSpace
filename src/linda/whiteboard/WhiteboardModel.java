@@ -64,9 +64,9 @@ public class WhiteboardModel {
     public void start(Linda linda) {
         this.linda = linda;
         // Create a template to indicate what we are interested in.
-        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, new CallbackErase());
-        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, new CallbackShape());
-        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, new CallbackRotate());
+        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, new AsynchronousCallback(new CallbackErase()));
+        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, new AsynchronousCallback(new CallbackShape()));
+        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, new AsynchronousCallback(new CallbackRotate()));
         System.out.println("Scan for current status");
         // During initialization, we need to read all the current lines
         // stored at the lindaSpaces server.
@@ -148,7 +148,8 @@ public class WhiteboardModel {
                             lines.add(shape);
                         }
                         view.redraw();
-                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, this);
+                        // Réenregistrer l'événement de manière asynchrone
+                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifShape, new AsynchronousCallback(this));
                 }
     }
 
@@ -160,7 +161,8 @@ public class WhiteboardModel {
                         }
                         view.setClear();
                         view.redraw();
-                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, this);
+                        // Réenregistrer l'événement de manière asynchrone
+                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifErase, new AsynchronousCallback(this));
 		}	
     }
     
@@ -178,7 +180,8 @@ public class WhiteboardModel {
                         }
                         view.setClear();
                         view.redraw();
-                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, this);
+                        // Réenregistrer l'événement de manière asynchrone
+                        linda.eventRegister(eventMode.READ, eventTiming.FUTURE, motifRotate, new AsynchronousCallback(this));
                 }
     }
 

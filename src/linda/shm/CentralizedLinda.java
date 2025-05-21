@@ -30,27 +30,40 @@ public class CentralizedLinda implements Linda {
     public void write(Tuple t) {
         lock.lock();
         try {
-            tupleSpace.add(t);
-
-            // Vérification des callbacks
+            // Clone the tuple before any operations
+            Tuple tupleToWrite = t.deepclone();
+            
+            // Vérification des callbacks avant d'ajouter le tuple
             List<CallbackRegistration> triggeredCallbacks = new ArrayList<>();
             for (CallbackRegistration registration : callbacks) {
-                if (t.matches(registration.template)) {
+                if (tupleToWrite.matches(registration.template)) {
                     triggeredCallbacks.add(registration);
                 }
             }
 
             // Traitement des callbacks déclenchés
             for (CallbackRegistration registration : triggeredCallbacks) {
+                // Suppression du callback avant son exécution
                 callbacks.remove(registration);
-                final Tuple callbackTuple = t;
 
-                if (registration.mode == eventMode.TAKE) {
-                    tupleSpace.remove(t);
+                // Exécution du callback
+                try {
+                    if (registration.mode == eventMode.TAKE) {
+                        // Pour les callbacks TAKE, on n'ajoute pas le tuple
+                        registration.callback.call(tupleToWrite.deepclone());
+                    } else {
+                        // Pour les callbacks READ, on ajoute le tuple avant d'exécuter le callback
+                        tupleSpace.add(tupleToWrite.deepclone());
+                        registration.callback.call(tupleToWrite.deepclone());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error in callback: " + e);
                 }
+            }
 
-                // Exécution du callback dans un thread séparé
-                new Thread(() -> registration.callback.call(callbackTuple)).start();
+            // Si aucun callback TAKE n'a été déclenché, on ajoute le tuple
+            if (triggeredCallbacks.isEmpty() || !triggeredCallbacks.stream().anyMatch(r -> r.mode == eventMode.TAKE)) {
+                tupleSpace.add(tupleToWrite.deepclone());
             }
 
             // Signal aux threads en attente
@@ -164,20 +177,20 @@ public class CentralizedLinda implements Linda {
             if (timing == eventTiming.IMMEDIATE) {
                 Tuple match = findMatchingTuple(template);
                 if (match != null) {
-                    final Tuple callbackTuple = match;
-
                     if (mode == eventMode.TAKE) {
                         tupleSpace.remove(match);
                     }
-
-                    // Exécution du callback dans un thread séparé
-                    new Thread(() -> callback.call(callbackTuple)).start();
+                    try {
+                        callback.call(match.deepclone());
+                    } catch (Exception e) {
+                        System.err.println("Error in callback: " + e);
+                    }
                     return;
                 }
             }
 
             // Enregistrement du callback pour les futurs tuples
-            callbacks.add(new CallbackRegistration(mode, timing, template, callback));
+            callbacks.add(new CallbackRegistration(mode, timing, template.deepclone(), callback));
         } finally {
             lock.unlock();
         }
