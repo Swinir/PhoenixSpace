@@ -32,70 +32,54 @@ public class CentralizedLinda implements Linda {
         try {
             // Clone the tuple before any operations
             Tuple tupleToWrite = t.deepclone();
-            
-            // Vérification des callbacks avant d'ajouter le tuple
-            List<CallbackRegistration> triggeredCallbacks = new ArrayList<>();
-            for (CallbackRegistration registration : callbacks) {
-                if (tupleToWrite.matches(registration.template)) {
-                    triggeredCallbacks.add(registration);
-                }
-            }
 
             // Add the tuple to the space first
             tupleSpace.add(tupleToWrite.deepclone());
-            
-            // Process callbacks in the order they were registered
-            // First process READ callbacks, then TAKE callbacks
-            List<CallbackRegistration> readCallbacks = new ArrayList<>();
-            List<CallbackRegistration> takeCallbacks = new ArrayList<>();
-            
-            for (CallbackRegistration registration : triggeredCallbacks) {
+
+            List<CallbackRegistration> matchingCallbacks = new ArrayList<>();
+            for (CallbackRegistration registration : new ArrayList<>(callbacks)) {
+                if (tupleToWrite.matches(registration.template)) {
+                    matchingCallbacks.add(registration);
+                }
+            }
+
+            for (CallbackRegistration registration : matchingCallbacks) {
                 if (registration.mode == eventMode.READ) {
-                    readCallbacks.add(registration);
-                } else {
-                    takeCallbacks.add(registration);
-                }
-                // Remove from the callbacks list
-                callbacks.remove(registration);
-            }
-            
-            // Process READ callbacks first
-            for (CallbackRegistration registration : readCallbacks) {
-                try {
-                    registration.callback.call(tupleToWrite.deepclone());
-                } catch (Exception e) {
-                    System.err.println("Error in callback: " + e);
-                }
-            }
-            
-            // Process TAKE callbacks - only execute one TAKE callback
-            if (!takeCallbacks.isEmpty()) {
-                CallbackRegistration takeReg = takeCallbacks.get(0);
-                
-                // Remove the tuple from space
-                Tuple matchingTuple = findMatchingTuple(takeReg.template);
-                if (matchingTuple != null) {
-                    tupleSpace.remove(matchingTuple);
-                    
+                    callbacks.remove(registration);
                     try {
-                        takeReg.callback.call(tupleToWrite.deepclone());
+                        registration.callback.call(tupleToWrite.deepclone());
                     } catch (Exception e) {
                         System.err.println("Error in callback: " + e);
                     }
                 }
-                
-                // Re-register the remaining TAKE callbacks that couldn't be executed
-                for (int i = 1; i < takeCallbacks.size(); i++) {
-                    callbacks.add(takeCallbacks.get(i));
+            }
+
+            CallbackRegistration takeCallback = null;
+            for (CallbackRegistration registration : matchingCallbacks) {
+                if (registration.mode == eventMode.TAKE) {
+                    takeCallback = registration;
+                    break;
+                }
+            }
+            if (takeCallback != null) {
+                callbacks.remove(takeCallback);
+                Tuple matchingTuple = findMatchingTuple(takeCallback.template);
+                if (matchingTuple != null) {
+                    tupleSpace.remove(matchingTuple);
+                    try {
+                        takeCallback.callback.call(matchingTuple.deepclone());
+                    } catch (Exception e) {
+                        System.err.println("Error in callback: " + e);
+                    }
                 }
             }
 
-            // Signal aux threads en attente
             condition.signalAll();
         } finally {
             lock.unlock();
         }
     }
+
 
     @Override
     public Tuple take(Tuple template) {
