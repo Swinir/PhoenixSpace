@@ -15,9 +15,9 @@ import linda.Tuple;
 public class CentralizedLinda implements Linda {
 
     private final List<Tuple> tupleSpace;
+    private final List<CallbackRegistration> callbacks;
     private final Lock lock;
     private final Condition condition;
-    private final List<CallbackRegistration> callbacks;
 
     public CentralizedLinda() {
         this.tupleSpace = new ArrayList<>();
@@ -163,11 +163,11 @@ public class CentralizedLinda implements Linda {
     }
 
     @Override
-    public Collection<Tuple> readAll(Tuple template) {
+    public Collection readAll(Tuple template) {
         lock.lock();
         try {
-            Collection<Tuple> results = new ArrayList<>();
-            for (Tuple t : tupleSpace) {
+            Collection results = new ArrayList<>();
+            for (Tuple t : tupleSpace) {  // Iteration without proper synchronization
                 if (t.matches(template)) {
                     results.add(t);
                 }
