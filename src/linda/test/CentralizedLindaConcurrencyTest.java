@@ -26,14 +26,14 @@ public class CentralizedLindaConcurrencyTest {
 
     @Test(timeout = 10000)
     public void testConcurrentWriteRead() throws InterruptedException {
-        final int numThreads = 5;  // Reduced for more reliable testing
-        final int tuplesPerThread = 50;  // Reduced for faster execution
+        final int numThreads = 5;
+        final int tuplesPerThread = 50;
         final CountDownLatch writeLatch = new CountDownLatch(numThreads);
         final CountDownLatch readLatch = new CountDownLatch(numThreads);
         final AtomicInteger totalTuplesWritten = new AtomicInteger(0);
         final AtomicInteger totalTuplesRead = new AtomicInteger(0);
 
-        // Start writer threads
+        // Demandes d'écriture de tuples
         for (int i = 0; i < numThreads; i++) {
             final int threadId = i;
             Thread writer = new Thread(() -> {
@@ -53,16 +53,16 @@ public class CentralizedLindaConcurrencyTest {
         for (int i = 0; i < numThreads; i++) {
             Thread reader = new Thread(() -> {
                 try {
-                    // Wait for all writes to complete
+                    // On attend que tous les écrivains aient terminé
                     writeLatch.await(5, TimeUnit.SECONDS);
 
-                    // Give a small buffer for final writes to be visible
+                    // On laisse un peu de temps pour s'assurer que les écritures sont visibles
                     Thread.sleep(100);
 
                     Tuple template = new Tuple(Integer.class, Integer.class, String.class);
                     int readCount = 0;
 
-                    // Use readAll instead of individual tryRead calls
+                    // On lit les tuples écrits
                     Collection<Tuple> results = linda.readAll(template);
                     readCount = results.size();
                     totalTuplesRead.addAndGet(readCount);
@@ -78,12 +78,9 @@ public class CentralizedLindaConcurrencyTest {
 
         assertTrue("All operations should complete", readLatch.await(8, TimeUnit.SECONDS));
 
-        // Verify that we wrote the expected number of tuples
         assertEquals("Should write expected number of tuples",
                 numThreads * tuplesPerThread, totalTuplesWritten.get());
 
-        // The total reads might be higher than written tuples since multiple readers
-        // can read the same tuples (readAll doesn't remove them)
         assertTrue("Should read at least as many tuples as written",
                 totalTuplesRead.get() >= numThreads * tuplesPerThread);
     }
@@ -93,7 +90,7 @@ public class CentralizedLindaConcurrencyTest {
         final int numTuples = 1000;
         final int numTakers = 10;
 
-        // Write tuples
+        // On ecrit les tuples
         for (int i = 0; i < numTuples; i++) {
             linda.write(new Tuple(i, "item"));
         }
@@ -101,7 +98,7 @@ public class CentralizedLindaConcurrencyTest {
         final CountDownLatch latch = new CountDownLatch(numTakers);
         final List<Integer> takenValues = Collections.synchronizedList(new ArrayList<>());
 
-        // Start taker threads
+        // On crée les threads pour effectuer les takes
         for (int i = 0; i < numTakers; i++) {
             Thread taker = new Thread(() -> {
                 Tuple template = new Tuple(Integer.class, String.class);
@@ -121,7 +118,7 @@ public class CentralizedLindaConcurrencyTest {
         assertTrue("All takers should complete", latch.await(5, TimeUnit.SECONDS));
         assertEquals("Should take all tuples exactly once", numTuples, takenValues.size());
 
-        // Verify no tuples remain
+        // On vérifie que tous les tuples ont été pris
         Tuple remaining = linda.tryRead(new Tuple(Integer.class, String.class));
         assertNull("No tuples should remain", remaining);
     }
@@ -133,12 +130,11 @@ public class CentralizedLindaConcurrencyTest {
         final CountDownLatch consumerLatch = new CountDownLatch(1);
         final List<Integer> consumed = Collections.synchronizedList(new ArrayList<>());
 
-        // Producer thread
         Thread producer = new Thread(() -> {
             for (int i = 0; i < numItems; i++) {
                 linda.write(new Tuple("item", i));
                 try {
-                    Thread.sleep(1); // Small delay to interleave with consumer
+                    Thread.sleep(1);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     return;
@@ -147,12 +143,11 @@ public class CentralizedLindaConcurrencyTest {
             producerLatch.countDown();
         });
 
-        // Consumer thread
         Thread consumer = new Thread(() -> {
             try {
                 Tuple template = new Tuple("item", Integer.class);
                 for (int i = 0; i < numItems; i++) {
-                    Tuple item = linda.take(template); // Blocking take
+                    Tuple item = linda.take(template); // Take Bloquant
                     consumed.add((Integer) item.get(1));
                 }
                 consumerLatch.countDown();
@@ -162,7 +157,7 @@ public class CentralizedLindaConcurrencyTest {
         });
 
         consumer.start();
-        Thread.sleep(50); // Ensure consumer starts first
+        Thread.sleep(50); // On laisse le temps au consommateur de consommer les premiers éléments
         producer.start();
 
         assertTrue("Producer should complete", producerLatch.await(3, TimeUnit.SECONDS));
@@ -170,7 +165,7 @@ public class CentralizedLindaConcurrencyTest {
 
         assertEquals("Should consume all items", numItems, consumed.size());
 
-        // Verify space is empty
+        // On vérifie que l'espace est vide
         Tuple remaining = linda.tryRead(new Tuple("item", Integer.class));
         assertNull("Space should be empty", remaining);
     }

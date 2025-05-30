@@ -12,5 +12,5 @@ import org.junit.runners.Suite;
         CentralizedLindaConcurrencyTest.class
 })
 public class CentralizedLindaTestSuite {
-    // Test suite runner - no additional code needed
+    // Cette classe est vide. Elle sert uniquement à lancer les tests que nous avons écrits plus facieement
 }

@@ -30,10 +30,10 @@ public class CentralizedLinda implements Linda {
     public void write(Tuple t) {
         lock.lock();
         try {
-            // Clone the tuple before any operations
+            // On clone le tuple pour éviter les modifications externes
             Tuple tupleToWrite = t.deepclone();
 
-            // Add the tuple to the space first
+            // Ajout du tuple dans l'espace de tuples
             tupleSpace.add(tupleToWrite.deepclone());
 
             List<CallbackRegistration> matchingCallbacks = new ArrayList<>();
@@ -167,7 +167,7 @@ public class CentralizedLinda implements Linda {
         lock.lock();
         try {
             Collection results = new ArrayList<>();
-            for (Tuple t : tupleSpace) {  // Iteration without proper synchronization
+            for (Tuple t : tupleSpace) {  // Utilisation de tupleSpace pour éviter les modifications concurrentes
                 if (t.matches(template)) {
                     results.add(t);
                 }
@@ -182,7 +182,7 @@ public class CentralizedLinda implements Linda {
     public void eventRegister(eventMode mode, eventTiming timing, Tuple template, Callback callback) {
         lock.lock();
         try {
-            // Vérification de déclenchement immédiat
+            // Vérification de la validité des paramètres
             if (timing == eventTiming.IMMEDIATE) {
                 Tuple match = findMatchingTuple(template);
                 if (match != null) {

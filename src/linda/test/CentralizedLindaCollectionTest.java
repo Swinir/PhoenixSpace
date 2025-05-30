@@ -29,7 +29,7 @@ public class CentralizedLindaCollectionTest {
 
         assertEquals("Should find 3 matching tuples", 3, results.size());
 
-        // Verify tuples are still in space
+        // Verifier les valeurs des tuples
         Collection<Tuple> stillThere = linda.readAll(template);
         assertEquals("Tuples should still be there after readAll", 3, stillThere.size());
     }
@@ -46,11 +46,11 @@ public class CentralizedLindaCollectionTest {
 
         assertEquals("Should take 3 matching tuples", 3, results.size());
 
-        // Verify tuples are removed from space
+        // On vérifie que les tuples correspondants ont été retirés
         Collection<Tuple> shouldBeEmpty = linda.readAll(template);
         assertEquals("No matching tuples should remain", 0, shouldBeEmpty.size());
 
-        // Verify non-matching tuple is still there
+        // On vérifie que les tuples non correspondants sont toujours là
         Tuple remaining = linda.tryRead(new Tuple(String.class, Integer.class));
         assertNotNull("Non-matching tuple should remain", remaining);
     }

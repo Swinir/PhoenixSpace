@@ -29,11 +29,9 @@ public class LindaClient implements Linda {
     public LindaClient(String serverURI) {
         try {
             callbackAdapters = new HashMap<>();
-            
-            // Force Java RMI to use localhost for callbacks
+
             System.setProperty("java.rmi.server.hostname", "127.0.0.1");
-            
-            // Parse the URI
+
             URI uri;
             String host;
             int port;
@@ -45,7 +43,6 @@ public class LindaClient implements Linda {
                 port = uri.getPort();
                 serviceName = uri.getPath().substring(1);
             } catch (Exception e) {
-                // Alternative parsing for "//host:port/service" format
                 String[] parts = serverURI.split("//");
                 String[] hostPort = parts[1].split("/")[0].split(":");
                 host = hostPort[0];
@@ -53,15 +50,12 @@ public class LindaClient implements Linda {
                 serviceName = parts[1].split("/")[1];
             }
             
-            // If no port is specified, use 1099 by default
             if (port == -1) {
                 port = 1099;
             }
             
-            // Get the RMI registry
             Registry registry = LocateRegistry.getRegistry(host, port);
             
-            // Get the Linda server reference
             lindaRemote = (LindaRemote) registry.lookup(serviceName);
             
             System.out.println("Connected to Linda server at: " + serverURI);
@@ -146,10 +140,10 @@ public class LindaClient implements Linda {
     @Override
     public void eventRegister(eventMode mode, eventTiming timing, Tuple template, Callback callback) {
         try {
-            // Use LocalCallback instead of RemoteCallback for event handling
+            // Vérification de la validité du mode et du timing
             final Callback cb = callback;
             
-            // Create a direct server-side callback handler
+            // On crée un RemoteCallback qui encapsule le Callback local
             lindaRemote.eventRegisterCallback(mode, timing, template, 
                 new RemoteCallbackImpl(new Callback() {
                     @Override

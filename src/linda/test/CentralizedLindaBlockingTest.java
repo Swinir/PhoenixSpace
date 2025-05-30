@@ -24,7 +24,7 @@ public class CentralizedLindaBlockingTest {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<Tuple> result = new AtomicReference<>();
 
-        // Start reader thread
+        // On demande un thread de lecture
         Thread reader = new Thread(() -> {
             try {
                 Tuple template = new Tuple(String.class, Integer.class);
@@ -37,13 +37,12 @@ public class CentralizedLindaBlockingTest {
         });
         reader.start();
 
-        // Wait a bit to ensure reader is blocked
+        // On attend un peu pour s'assurer que le lecteur est bloqué
         Thread.sleep(100);
 
-        // Write matching tuple
         linda.write(new Tuple("test", 42));
 
-        // Wait for reader to complete
+        // On attend que le lecteur se termine
         assertTrue("Reader should complete", latch.await(2, TimeUnit.SECONDS));
 
         Tuple found = result.get();
@@ -51,7 +50,7 @@ public class CentralizedLindaBlockingTest {
         assertEquals("Should match string", "test", found.get(0));
         assertEquals("Should match integer", 42, found.get(1));
 
-        // Verify tuple is still there (read doesn't remove)
+        // Vérifier que le tuple est toujours là (read ne fois pas le supprimer)
         Tuple stillThere = linda.tryRead(new Tuple(String.class, Integer.class));
         assertNotNull("Tuple should still be in space after read", stillThere);
     }
@@ -61,7 +60,6 @@ public class CentralizedLindaBlockingTest {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<Tuple> result = new AtomicReference<>();
 
-        // Start taker thread
         Thread taker = new Thread(() -> {
             try {
                 Tuple template = new Tuple(Boolean.class, String.class);
@@ -74,13 +72,10 @@ public class CentralizedLindaBlockingTest {
         });
         taker.start();
 
-        // Wait a bit to ensure taker is blocked
         Thread.sleep(100);
 
-        // Write matching tuple
         linda.write(new Tuple(true, "blocking"));
 
-        // Wait for taker to complete
         assertTrue("Taker should complete", latch.await(2, TimeUnit.SECONDS));
 
         Tuple found = result.get();
@@ -115,13 +110,10 @@ public class CentralizedLindaBlockingTest {
             reader.start();
         }
 
-        // Wait a bit to ensure all readers are blocked
         Thread.sleep(100);
 
-        // Write one matching tuple
         linda.write(new Tuple(999));
 
-        // All readers should be unblocked
         assertTrue("All readers should complete", latch.await(2, TimeUnit.SECONDS));
 
         // All should have found the same tuple
