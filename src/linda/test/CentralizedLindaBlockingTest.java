@@ -83,7 +83,7 @@ public class CentralizedLindaBlockingTest {
         assertEquals("Should match boolean", true, found.get(0));
         assertEquals("Should match string", "blocking", found.get(1));
 
-        // Verify tuple is removed (take removes it)
+        // Vérifier que le tuple a été retiré (take doit le supprimer)
         Tuple shouldBeGone = linda.tryRead(new Tuple(Boolean.class, String.class));
         assertNull("Tuple should be removed after take", shouldBeGone);
     }
@@ -116,7 +116,7 @@ public class CentralizedLindaBlockingTest {
 
         assertTrue("All readers should complete", latch.await(2, TimeUnit.SECONDS));
 
-        // All should have found the same tuple
+        // Vérifier que tous les lecteurs ont trouvé le tuple
         for (int i = 0; i < 3; i++) {
             assertNotNull("Reader " + i + " should find tuple", results[i].get());
             assertEquals("Reader " + i + " should find correct value", 999, results[i].get().get(0));

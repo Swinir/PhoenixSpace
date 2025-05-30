@@ -42,7 +42,7 @@ public class CentralizedLindaBasicTest {
         assertEquals("Should match first element", 100, result.get(0));
         assertEquals("Should match second element", true, result.get(1));
 
-        // Verify tuple is removed
+        // Verifier que le tuple a été retiré
         Tuple secondResult = linda.tryRead(template);
         assertNull("Tuple should be removed after take", secondResult);
     }
@@ -69,7 +69,7 @@ public class CentralizedLindaBasicTest {
 
         Tuple template = new Tuple(Integer.class, String.class);
 
-        // Should find one of them
+        // Essaye de prendre les tuples un par un
         Tuple result1 = linda.tryTake(template);
         assertNotNull("Should find first tuple", result1);
 
@@ -79,7 +79,7 @@ public class CentralizedLindaBasicTest {
         Tuple result3 = linda.tryTake(template);
         assertNotNull("Should find third tuple", result3);
 
-        // No more tuples
+        // Vérifie que le quatrième essai ne trouve rien
         Tuple result4 = linda.tryTake(template);
         assertNull("Should not find fourth tuple", result4);
     }
