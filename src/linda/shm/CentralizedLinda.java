@@ -14,10 +14,10 @@ import linda.Tuple;
 /** Implémentation centralisée de Linda en mémoire partagée. */
 public class CentralizedLinda implements Linda {
 
-    private final List<Tuple> tupleSpace;
+    final List<Tuple> tupleSpace;
     private final List<CallbackRegistration> callbacks;
-    private final Lock lock;
-    private final Condition condition;
+    final Lock lock;
+    final Condition condition;
 
     public CentralizedLinda() {
         this.tupleSpace = new ArrayList<>();
