@@ -102,7 +102,6 @@ public class LindaServer extends UnicastRemoteObject implements LindaRemote {
                 System.exit(1);
             }
 
-            // Force RMI to use localhost (127.0.0.1) for all connections
             System.setProperty("java.rmi.server.hostname", "127.0.0.1");
             
             // Paramètres de connexion

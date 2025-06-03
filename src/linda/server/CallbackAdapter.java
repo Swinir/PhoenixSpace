@@ -20,7 +20,7 @@ public class CallbackAdapter extends UnicastRemoteObject implements RemoteCallba
      * Constructeur qui utilise les paramètres par défaut.
      */
     public CallbackAdapter(Callback callback) throws RemoteException {
-        super(0); // Using port 0 lets the RMI system assign a random available port
+        super(0); // Utilise un port aléatoire
         this.callback = callback;
     }
     

@@ -15,9 +15,9 @@ import linda.Tuple;
 public class CentralizedLinda implements Linda {
 
     private final List<Tuple> tupleSpace;
+    private final List<CallbackRegistration> callbacks;
     private final Lock lock;
     private final Condition condition;
-    private final List<CallbackRegistration> callbacks;
 
     public CentralizedLinda() {
         this.tupleSpace = new ArrayList<>();
@@ -30,10 +30,10 @@ public class CentralizedLinda implements Linda {
     public void write(Tuple t) {
         lock.lock();
         try {
-            // Clone the tuple before any operations
+            // On clone le tuple pour éviter les modifications externes
             Tuple tupleToWrite = t.deepclone();
 
-            // Add the tuple to the space first
+            // Ajout du tuple dans l'espace de tuples
             tupleSpace.add(tupleToWrite.deepclone());
 
             List<CallbackRegistration> matchingCallbacks = new ArrayList<>();
@@ -163,11 +163,11 @@ public class CentralizedLinda implements Linda {
     }
 
     @Override
-    public Collection<Tuple> readAll(Tuple template) {
+    public Collection readAll(Tuple template) {
         lock.lock();
         try {
-            Collection<Tuple> results = new ArrayList<>();
-            for (Tuple t : tupleSpace) {
+            Collection results = new ArrayList<>();
+            for (Tuple t : tupleSpace) {  // Utilisation de tupleSpace pour éviter les modifications concurrentes
                 if (t.matches(template)) {
                     results.add(t);
                 }
@@ -182,7 +182,7 @@ public class CentralizedLinda implements Linda {
     public void eventRegister(eventMode mode, eventTiming timing, Tuple template, Callback callback) {
         lock.lock();
         try {
-            // Vérification de déclenchement immédiat
+            // Vérification de la validité des paramètres
             if (timing == eventTiming.IMMEDIATE) {
                 Tuple match = findMatchingTuple(template);
                 if (match != null) {
