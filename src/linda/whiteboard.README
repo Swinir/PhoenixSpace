@@ -11,5 +11,4 @@ queinnec@gobelin$ java -Djava.rmi.server.hostname=gobelin linda.whiteboard.White
 queinnec@turing$ java -Djava.rmi.server.hostname=turing linda.whiteboard.Whiteboard "//gorgone:1099/toto"
 
 Pour lancer le serveur persistent :
-java -cp out "-Djava.rmi.server.hostname=localhost" linda.server.CreateServer toto
-java -cp out "-Djava.rmi.server.hostname=turing" linda.whiteboard.Whiteboard "//localhost:1099/toto"
+java -cp PhoenixSpace "-Djava.rmi.server.hostname=localhost" linda.server.PersistentCreateServer toto
