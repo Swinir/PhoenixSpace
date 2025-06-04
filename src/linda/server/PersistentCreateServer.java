@@ -13,7 +13,6 @@ public class PersistentCreateServer {
             return;
         }
 
-        // Passer les arguments au serveur persistant
         PersistentLindaServer.main(args);
     }
 }
